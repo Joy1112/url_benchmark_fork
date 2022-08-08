@@ -8,7 +8,7 @@ from dm_control.suite.wrappers import action_scale, pixels
 from dm_env import StepType, specs
 
 import custom_dmc_tasks as cdmc
-
+from custom_football import Academy_3_vs_1_with_Keeper
 
 class ExtendedTimeStep(NamedTuple):
     step_type: Any
@@ -298,19 +298,30 @@ def _make_dmc(obs_type, domain, task, frame_stack, action_repeat, seed):
                              render_kwargs=render_kwargs)
     return env
 
+def _make_gfootball(obs_type, domain, task, frame_stack, action_repeat, seed):
+    env = Academy_3_vs_1_with_Keeper(no_reward=True)
+    env = ActionDTypeWrapper(env, np.float32)
+
+    return env
 
 def make(name, obs_type, frame_stack, action_repeat, seed):
     assert obs_type in ['states', 'pixels']
     domain, task = name.split('_', 1)
     domain = dict(cup='ball_in_cup').get(domain, domain)
 
-    make_fn = _make_jaco if domain == 'jaco' else _make_dmc
+    if domain == 'jaco':
+        make_fn = _make_jaco
+    elif domain == "gfootball":
+        make_fn = _make_gfootball
+    else:
+        make_fn = _make_dmc
     env = make_fn(obs_type, domain, task, frame_stack, action_repeat, seed)
 
     if obs_type == 'pixels':
         env = FrameStackWrapper(env, frame_stack)
     else:
-        env = ObservationDTypeWrapper(env, np.float32)
+        if domain != "gfootball":
+            env = ObservationDTypeWrapper(env, np.float32)
 
     env = action_scale.Wrapper(env, minimum=-1.0, maximum=+1.0)
     env = ExtendedTimeStepWrapper(env)
